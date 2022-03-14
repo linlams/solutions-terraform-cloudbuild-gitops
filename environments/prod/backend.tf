@@ -15,7 +15,7 @@
 
 terraform {
   backend "gcs" {
-    bucket = "PROJECT_ID-tfstate"
+    bucket = "juyun-pobing-tfstate"
     prefix = "env/prod"
   }
 }
