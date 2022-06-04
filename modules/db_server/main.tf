@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-
-provider "random" {
-  version = "~> 2.2"
-}
-
 resource "random_id" "name" {
   byte_length = 2
 }
