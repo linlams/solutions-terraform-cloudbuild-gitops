@@ -26,13 +26,13 @@ resource "google_sql_database_instance" "instance_master" {
   master_instance_name = var.master_instance_name
 
   settings {
-    tier                        = "${lookup(var.master, "tier", "db-f1-micro")}"
-    disk_type                   = "${lookup(var.master, "disk_type", "PD_SSD")}"
-    disk_size                   = "${lookup(var.master, "disk_size", 10)}"
-    disk_autoresize             = "${lookup(var.master, "disk_auto", true)}"
-    activation_policy           = "${lookup(var.master, "activation_policy", "ALWAYS")}"
+    tier                        = "db-f1-micro"
+    disk_type                   = "PD_SSD"
+    disk_size                   = "disk_size"
+    disk_autoresize             = true
+    activation_policy           = "ALWAYS"
     availability_type           = "ZONAL"
-    replication_type            = "${lookup(var.master, "replication_type", "SYNCHRONOUS")}"
+    replication_type            =  "SYNCHRONOUS"
     authorized_gae_applications = "${var.authorized_gae_applications_master}"
     user_labels                 = "${var.labels}"
 
@@ -52,9 +52,9 @@ resource "google_sql_database_instance" "instance_master" {
     }
 
     maintenance_window {
-      day          = "${lookup(var.master, "maintenance_day", 1)}"          # Monday
-      hour         = "${lookup(var.master, "maintenance_hour", 2)}"         # 2AM
-      update_track = "${lookup(var.master, "maintenance_track", "stable")}"
+      day          = 1         # Monday
+      hour         = 2         # 2AM
+      update_track =  "stable"
     }
   }
 }
