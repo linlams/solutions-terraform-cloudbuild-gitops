@@ -41,7 +41,7 @@ variable "tier" {
 
 variable "db_name" {
   description = "Name of the default database to create"
-  default     = "default"
+  default     = "demo-db-test-1"
 }
 
 variable "db_charset" {
