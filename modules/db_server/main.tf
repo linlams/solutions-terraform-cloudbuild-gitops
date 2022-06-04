@@ -37,18 +37,18 @@ resource "google_sql_database_instance" "master" {
     user_labels                 = "${var.labels}"
 
     ip_configuration {
-      require_ssl  = "${lookup(var.master, "require_ssl", false)}"
-      ipv4_enabled = "${lookup(var.master, "ipv4_enabled", true)}"
+      require_ssl  =  false
+      ipv4_enabled =  true
     }
 
     location_preference {
-      zone = "${var.general["region"]}-${var.master["zone"]}"
+      zone = "${var.general["region"]}-a"
     }
 
     backup_configuration {
       binary_log_enabled = true
-      enabled            = "${lookup(var.general, "backup_enabled", true)}"
-      start_time         = "${lookup(var.general, "backup_time", "02:30")}" # every 2:30AM
+      enabled            = true
+      start_time         = "02:30"
     }
 
     maintenance_window {
@@ -65,7 +65,7 @@ resource "google_sql_database_instance" "new_instance_sql_replica" {
   name                 = "${local.name_prefix}-replica"
   region               = "${var.general["region"]}"
   database_version     = "${lookup(var.general, "db_version", "MYSQL_5_7")}"
-  master_instance_name = "${google_sql_database_instance.new_instance_sql_master.name}"
+  master_instance_name = "${google_sql_database_instance.master.name}"
 
   replica_configuration {
     # connect_retry_interval = "${lookup(var.replica, "retry_interval", "60")}"
@@ -87,9 +87,9 @@ resource "google_sql_database_instance" "new_instance_sql_replica" {
     }
 
     maintenance_window {
-      day          = "${lookup(var.replica, "maintenance_day", 3)}"          # Wednesday
-      hour         = "${lookup(var.replica, "maintenance_hour", 2)}"         # 2AM
-      update_track = "${lookup(var.replica, "maintenance_track", "stable")}"
+      day          = 3          # Wednesday
+      hour         = 2        # 2AM
+      update_track = "stable"
     }
   }
 }
