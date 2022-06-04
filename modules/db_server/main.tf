@@ -26,105 +26,70 @@ resource "google_sql_database_instance" "master" {
   master_instance_name = var.master_instance_name
 
   settings {
-    tier                        = var.tier
-    activation_policy           = var.activation_policy
-    authorized_gae_applications = var.authorized_gae_applications
-    disk_autoresize             = var.disk_autoresize
-    dynamic "backup_configuration" {
-      for_each = [var.backup_configuration]
-      content {
+    tier                        = "${lookup(var.master, "tier", "db-f1-micro")}"
+    disk_type                   = "${lookup(var.master, "disk_type", "PD_SSD")}"
+    disk_size                   = "${lookup(var.master, "disk_size", 10)}"
+    disk_autoresize             = "${lookup(var.master, "disk_auto", true)}"
+    activation_policy           = "${lookup(var.master, "activation_policy", "ALWAYS")}"
+    availability_type           = "ZONAL"
+    replication_type            = "${lookup(var.master, "replication_type", "SYNCHRONOUS")}"
+    authorized_gae_applications = "${var.authorized_gae_applications_master}"
+    user_labels                 = "${var.labels}"
 
-        binary_log_enabled = lookup(backup_configuration.value, "binary_log_enabled", null)
-        enabled            = lookup(backup_configuration.value, "enabled", null)
-        start_time         = lookup(backup_configuration.value, "start_time", null)
-      }
+    ip_configuration {
+      require_ssl  = "${lookup(var.master, "require_ssl", false)}"
+      ipv4_enabled = "${lookup(var.master, "ipv4_enabled", true)}"
     }
-    dynamic "ip_configuration" {
-      for_each = [var.ip_configuration]
-      content {
 
-        ipv4_enabled    = lookup(ip_configuration.value, "ipv4_enabled", true)
-        private_network = lookup(ip_configuration.value, "private_network", null)
-        require_ssl     = lookup(ip_configuration.value, "require_ssl", null)
-
-        dynamic "authorized_networks" {
-          for_each = lookup(ip_configuration.value, "authorized_networks", [])
-          content {
-            expiration_time = lookup(authorized_networks.value, "expiration_time", null)
-            name            = lookup(authorized_networks.value, "name", null)
-            value           = lookup(authorized_networks.value, "value", null)
-          }
-        }
-      }
+    location_preference {
+      zone = "${var.general["region"]}-${var.master["zone"]}"
     }
-    dynamic "location_preference" {
-      for_each = [var.location_preference]
-      content {
 
-        follow_gae_application = lookup(location_preference.value, "follow_gae_application", null)
-        zone                   = lookup(location_preference.value, "zone", null)
-      }
+    backup_configuration {
+      binary_log_enabled = true
+      enabled            = "${lookup(var.general, "backup_enabled", true)}"
+      start_time         = "${lookup(var.general, "backup_time", "02:30")}" # every 2:30AM
     }
-    dynamic "maintenance_window" {
-      for_each = [var.maintenance_window]
-      content {
 
-        day          = lookup(maintenance_window.value, "day", null)
-        hour         = lookup(maintenance_window.value, "hour", null)
-        update_track = lookup(maintenance_window.value, "update_track", null)
-      }
-    }
-    disk_size        = var.disk_size
-    disk_type        = var.disk_type
-    pricing_plan     = var.pricing_plan
-    replication_type = var.replication_type
-    availability_type = var.availability_type
-  }
-
-  dynamic "replica_configuration" {
-    for_each = [var.replica_configuration]
-    content {
-
-      ca_certificate            = lookup(replica_configuration.value, "ca_certificate", null)
-      client_certificate        = lookup(replica_configuration.value, "client_certificate", null)
-      client_key                = lookup(replica_configuration.value, "client_key", null)
-      connect_retry_interval    = lookup(replica_configuration.value, "connect_retry_interval", null)
-      dump_file_path            = lookup(replica_configuration.value, "dump_file_path", null)
-      failover_target           = lookup(replica_configuration.value, "failover_target", null)
-      master_heartbeat_period   = lookup(replica_configuration.value, "master_heartbeat_period", null)
-      password                  = lookup(replica_configuration.value, "password", null)
-      ssl_cipher                = lookup(replica_configuration.value, "ssl_cipher", null)
-      username                  = lookup(replica_configuration.value, "username", null)
-      verify_server_certificate = lookup(replica_configuration.value, "verify_server_certificate", null)
+    maintenance_window {
+      day          = "${lookup(var.master, "maintenance_day", 1)}"          # Monday
+      hour         = "${lookup(var.master, "maintenance_hour", 2)}"         # 2AM
+      update_track = "${lookup(var.master, "maintenance_track", "stable")}"
     }
   }
+}
 
-  timeouts {
-    create = "60m"
-    delete = "2h"
+# Replica CloudSQL
+# https://www.terraform.io/docs/providers/google/r/sql_database_instance.html
+resource "google_sql_database_instance" "new_instance_sql_replica" {
+  name                 = "${local.name_prefix}-replica"
+  region               = "${var.general["region"]}"
+  database_version     = "${lookup(var.general, "db_version", "MYSQL_5_7")}"
+  master_instance_name = "${google_sql_database_instance.new_instance_sql_master.name}"
+
+  replica_configuration {
+    # connect_retry_interval = "${lookup(var.replica, "retry_interval", "60")}"
+    failover_target = true
+  }
+
+  settings {
+    tier                        = "${lookup(var.replica, "tier", "db-f1-micro")}"
+    disk_type                   = "${lookup(var.replica, "disk_type", "PD_SSD")}"
+    disk_size                   = "${lookup(var.replica, "disk_size", 10)}"
+    disk_autoresize             = "${lookup(var.replica, "disk_auto", true)}"
+    activation_policy           = "${lookup(var.replica, "activation_policy", "ALWAYS")}"
+    availability_type           = "ZONAL"
+    authorized_gae_applications = "${var.authorized_gae_applications_replica}"
+    crash_safe_replication      = true
+
+    location_preference {
+      zone = "${var.general["region"]}-${var.replica["zone"]}"
+    }
+
+    maintenance_window {
+      day          = "${lookup(var.replica, "maintenance_day", 3)}"          # Wednesday
+      hour         = "${lookup(var.replica, "maintenance_hour", 2)}"         # 2AM
+      update_track = "${lookup(var.replica, "maintenance_track", "stable")}"
+    }
   }
 }
-
-resource "google_sql_database" "default" {
-  count     = var.master_instance_name == "" ? 1 : 0
-  name      = var.db_name
-  project   = var.project
-  instance  = google_sql_database_instance.master.name
-  charset   = var.db_charset
-  collation = var.db_collation
-}
-
-resource "random_id" "user-password" {
-  byte_length = 8
-}
-
-resource "google_sql_user" "default" {
-  count    = var.master_instance_name == "" ? 1 : 0
-  name     = var.user_name
-  project  = var.project
-  instance = google_sql_database_instance.master.name
-  host     = var.user_host
-  password = var.user_password == "" ? random_id.user-password.hex : var.user_password
-}
-
-
