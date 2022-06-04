@@ -13,11 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-variable "master" {
-  type        = "map"
-  description = "Master configuration"
-}
    
 variable "project" {}
 variable "subnet" {}
