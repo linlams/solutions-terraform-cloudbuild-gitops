@@ -16,11 +16,6 @@
 variable "project" {}
 variable "subnet" {}
 
-variable "project" {
-  description = "The project to deploy to, if not set the default provider project is used."
-  default     = "juyun-demo"
-}
-
 variable "region" {
   description = "Region for cloud resources"
   default     = "us-central1"
