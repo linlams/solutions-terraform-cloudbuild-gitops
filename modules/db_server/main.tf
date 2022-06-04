@@ -18,7 +18,7 @@ resource "random_id" "name" {
   byte_length = 2
 }
 
-resource "google_sql_database_instance" "master" {
+resource "google_sql_database_instance" "instance_master" {
   name                 = "example-mysql-${random_id.name.hex}"
   project              = var.project
   region               = var.region
