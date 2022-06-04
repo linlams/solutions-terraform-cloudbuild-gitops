@@ -33,8 +33,7 @@ resource "google_sql_database_instance" "master" {
     activation_policy           = "ALWAYS"
     availability_type           = "ZONAL"
     replication_type            =  "SYNCHRONOUS"
-    authorized_gae_applications = "${var.authorized_gae_applications_master}"
-    user_labels                 = "${var.labels}"
+    authorized_gae_applications = "${var.authorized_gae_applications}"
 
     ip_configuration {
       require_ssl  =  false
@@ -42,7 +41,7 @@ resource "google_sql_database_instance" "master" {
     }
 
     location_preference {
-      zone = "${var.general["region"]}-a"
+      zone = "${var.general["region"]}+"a"
     }
 
     backup_configuration {
