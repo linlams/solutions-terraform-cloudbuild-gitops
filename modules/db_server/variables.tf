@@ -1,11 +1,11 @@
-/*
- * Copyright 2017 Google Inc.
+/**
+ * Copyright 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,128 +13,300 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-   
-variable "project" {}
-variable "subnet" {}
 
+variable "project_id" {
+  description = "The project ID to manage the Cloud SQL resources"
+  type        = string
+}
+
+variable "name" {
+  type        = string
+  description = "The name of the Cloud SQL resources"
+}
+
+variable "random_instance_name" {
+  type        = bool
+  description = "Sets random suffix at the end of the Cloud SQL resource name"
+  default     = false
+}
+
+// required
+variable "database_version" {
+  description = "The database version to use"
+  type        = string
+}
+
+// required
 variable "region" {
-  description = "Region for cloud resources"
+  description = "The region of the Cloud SQL resources"
+  type        = string
   default     = "us-central1"
 }
 
-variable "database_version" {
-  description = "The version of of the database. For example, `MYSQL_5_6` or `POSTGRES_9_6`."
-  default     = "MYSQL_5_7"
+// Master
+variable "tier" {
+  description = "The tier for the master instance."
+  type        = string
+  default     = "db-n1-standard-1"
 }
 
-variable "master_instance_name" {
-  description = "The name of the master instance to replicate"
+variable "zone" {
+  description = "The zone for the master instance, it should be something like: `us-central1-a`, `us-east1-c`."
+  type        = string
+}
+
+variable "activation_policy" {
+  description = "The activation policy for the master instance. Can be either `ALWAYS`, `NEVER` or `ON_DEMAND`."
+  type        = string
+  default     = "ALWAYS"
+}
+
+variable "availability_type" {
+  description = "The availability type for the master instance. Can be either `REGIONAL` or `null`."
+  type        = string
+  default     = "REGIONAL"
+}
+
+variable "disk_autoresize" {
+  description = "Configuration to increase storage size"
+  type        = bool
+  default     = true
+}
+
+variable "disk_autoresize_limit" {
+  description = "The maximum size to which storage can be auto increased."
+  type        = number
+  default     = 0
+}
+
+variable "disk_size" {
+  description = "The disk size for the master instance"
+  type        = number
+  default     = 10
+}
+
+variable "disk_type" {
+  description = "The disk type for the master instance."
+  type        = string
+  default     = "PD_SSD"
+}
+
+variable "pricing_plan" {
+  description = "The pricing plan for the master instance."
+  type        = string
+  default     = "PER_USE"
+}
+
+variable "maintenance_window_day" {
+  description = "The day of week (1-7) for the master instance maintenance."
+  type        = number
+  default     = 1
+}
+
+variable "maintenance_window_hour" {
+  description = "The hour of day (0-23) maintenance window for the master instance maintenance."
+  type        = number
+  default     = 23
+}
+
+variable "maintenance_window_update_track" {
+  description = "The update track of maintenance window for the master instance maintenance. Can be either `canary` or `stable`."
+  type        = string
+  default     = "canary"
+}
+
+variable "database_flags" {
+  description = "List of Cloud SQL flags that are applied to the database server. See [more details](https://cloud.google.com/sql/docs/mysql/flags)"
+  type = list(object({
+    name  = string
+    value = string
+  }))
+  default = []
+}
+
+
+variable "user_labels" {
+  type        = map(string)
+  default     = {}
+  description = "The key/value labels for the master instances."
+}
+
+variable "backup_configuration" {
+  description = "The backup_configuration settings subblock for the database setings"
+  type = object({
+    binary_log_enabled             = bool
+    enabled                        = bool
+    start_time                     = string
+    location                       = string
+    transaction_log_retention_days = string
+    retained_backups               = number
+    retention_unit                 = string
+  })
+  default = {
+    binary_log_enabled             = false
+    enabled                        = false
+    start_time                     = null
+    location                       = null
+    transaction_log_retention_days = null
+    retained_backups               = null
+    retention_unit                 = null
+  }
+}
+
+variable "ip_configuration" {
+  description = "The ip_configuration settings subblock"
+  type = object({
+    authorized_networks = list(map(string))
+    ipv4_enabled        = bool
+    private_network     = string
+    require_ssl         = bool
+    allocated_ip_range  = string
+  })
+  default = {
+    authorized_networks = []
+    ipv4_enabled        = true
+    private_network     = null
+    require_ssl         = null
+    allocated_ip_range  = null
+  }
+}
+
+// Read Replicas
+variable "read_replicas" {
+  description = "List of read replicas to create. Encryption key is required for replica in different region. For replica in same region as master set encryption_key_name = null"
+  type = list(object({
+    name                  = string
+    tier                  = string
+    zone                  = string
+    disk_type             = string
+    disk_autoresize       = bool
+    disk_autoresize_limit = number
+    disk_size             = string
+    user_labels           = map(string)
+    database_flags = list(object({
+      name  = string
+      value = string
+    }))
+    ip_configuration = object({
+      authorized_networks = list(map(string))
+      ipv4_enabled        = bool
+      private_network     = string
+      require_ssl         = bool
+      allocated_ip_range  = string
+    })
+    encryption_key_name = string
+  }))
+  default = []
+}
+
+variable "read_replica_name_suffix" {
+  description = "The optional suffix to add to the read instance name"
+  type        = string
   default     = ""
 }
 
-variable "tier" {
-  description = "The machine tier (First Generation) or type (Second Generation). See this page for supported tiers and pricing: https://cloud.google.com/sql/pricing"
-  default     = "db-f1-micro"
-}
-
 variable "db_name" {
-  description = "Name of the default database to create"
-  default     = "demo-db-test-1"
+  description = "The name of the default database to create"
+  type        = string
+  default     = "default"
 }
 
 variable "db_charset" {
   description = "The charset for the default database"
+  type        = string
   default     = ""
 }
 
 variable "db_collation" {
-  description = "The collation for the default database. Example for MySQL databases: 'utf8_general_ci', and Postgres: 'en_US.UTF8'"
+  description = "The collation for the default database. Example: 'utf8_general_ci'"
+  type        = string
   default     = ""
+}
+
+variable "additional_databases" {
+  description = "A list of databases to be created in your cluster"
+  type = list(object({
+    name      = string
+    charset   = string
+    collation = string
+  }))
+  default = []
 }
 
 variable "user_name" {
   description = "The name of the default user"
+  type        = string
   default     = "default"
 }
 
 variable "user_host" {
   description = "The host for the default user"
+  type        = string
   default     = "%"
 }
 
 variable "user_password" {
   description = "The password for the default user. If not set, a random one will be generated and available in the generated_user_password output variable."
+  type        = string
   default     = ""
 }
 
-variable "activation_policy" {
-  description = "This specifies when the instance should be active. Can be either `ALWAYS`, `NEVER` or `ON_DEMAND`."
-  default     = "ALWAYS"
-}
-
-variable "authorized_gae_applications" {
-  description = "A list of Google App Engine (GAE) project names that are allowed to access this instance."
+variable "additional_users" {
+  description = "A list of users to be created in your cluster"
+  type        = list(map(any))
   default     = []
 }
 
-variable "disk_autoresize" {
-  description = "Second Generation only. Configuration to increase storage size automatically."
+variable "create_timeout" {
+  description = "The optional timout that is applied to limit long database creates."
+  type        = string
+  default     = "10m"
+}
+
+variable "update_timeout" {
+  description = "The optional timout that is applied to limit long database updates."
+  type        = string
+  default     = "10m"
+}
+
+variable "delete_timeout" {
+  description = "The optional timout that is applied to limit long database deletes."
+  type        = string
+  default     = "10m"
+}
+
+variable "encryption_key_name" {
+  description = "The full path to the encryption key used for the CMEK disk encryption"
+  type        = string
+  default     = null
+}
+
+variable "module_depends_on" {
+  description = "List of modules or resources this module depends on."
+  type        = list(any)
+  default     = []
+}
+
+variable "deletion_protection" {
+  description = "Used to block Terraform from deleting a SQL Instance."
+  type        = bool
   default     = true
 }
 
-variable "disk_size" {
-  description = "Second generation only. The size of data disk, in GB. Size of a running instance cannot be reduced but can be increased."
-  default     = 10
+variable "read_replica_deletion_protection" {
+  description = "Used to block Terraform from deleting replica SQL Instances."
+  type        = bool
+  default     = false
 }
 
-variable "disk_type" {
-  description = "Second generation only. The type of data disk: `PD_SSD` or `PD_HDD`."
-  default     = "PD_SSD"
+variable "enable_default_db" {
+  description = "Enable or disable the creation of the default database"
+  type        = bool
+  default     = true
 }
 
-variable "pricing_plan" {
-  description = "First generation only. Pricing plan for this instance, can be one of `PER_USE` or `PACKAGE`."
-  default     = "PER_USE"
+variable "enable_default_user" {
+  description = "Enable or disable the creation of the default user"
+  type        = bool
+  default     = true
 }
-
-variable "replication_type" {
-  description = "Replication type for this instance, can be one of `ASYNCHRONOUS` or `SYNCHRONOUS`."
-  default     = "SYNCHRONOUS"
-}
-
-variable "database_flags" {
-  description = "List of Cloud SQL flags that are applied to the database server"
-  default     = []
-}
-
-variable "backup_configuration" {
-  description = "The backup_configuration settings subblock for the database setings"
-  default     = {}
-}
-
-variable "ip_configuration" {
-  description = "The ip_configuration settings subblock"
-  default     = {}
-}
-
-variable "location_preference" {
-  description = "The location_preference settings subblock"
-  default     = {}
-}
-
-variable "maintenance_window" {
-  description = "The maintenance_window settings subblock"
-  default     = {}
-}
-
-variable "replica_configuration" {
-  description = "The optional replica_configuration block for the database instance"
-  default     = {}
-}
-
-variable "availability_type" {
-  description = "This specifies whether a PostgreSQL instance should be set up for high availability (REGIONAL) or single zone (ZONAL)."
-  default     = "ZONAL"
-}
-
-
